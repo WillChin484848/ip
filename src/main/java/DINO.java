@@ -1,6 +1,17 @@
+package dino;
+
 import java.util.Scanner;
 
+/**
+ * Runs the DINO chatbot and manages the user's tasks.
+ */
 public class DINO {
+
+    /**
+     * Starts DINO and processes commands entered by the user.
+     *
+     * @param args command-line arguments
+     */
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
 
