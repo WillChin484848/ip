@@ -1,4 +1,4 @@
-package dino;
+package java;
 
 import java.util.Scanner;
 

@@ -1,4 +1,4 @@
-package dino;
+package java;
 
 /**
  * Represents a task stored by DINO.
