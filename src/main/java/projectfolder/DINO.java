@@ -1,18 +1,18 @@
 package projectfolder;
 
+import java.util.ArrayList;
 import java.util.Scanner;
 
 /**
  * Runs the DINO chatbot and manages the user's tasks.
  */
 public class DINO {
-    private static final int MAX_TASKS = 100;
-
     private static final String TODO_PREFIX = "todo ";
     private static final String DEADLINE_PREFIX = "deadline ";
     private static final String EVENT_PREFIX = "event ";
     private static final String MARK_PREFIX = "mark ";
     private static final String UNMARK_PREFIX = "unmark ";
+    private static final String DELETE_PREFIX = "delete ";
 
     /**
      * Starts DINO and processes commands entered by the user.
@@ -21,8 +21,7 @@ public class DINO {
      */
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
-        Task[] tasks = new Task[MAX_TASKS];
-        int taskCount = 0;
+        ArrayList<Task> tasks = new ArrayList<>();
 
         printGreeting();
 
@@ -35,7 +34,7 @@ public class DINO {
             }
 
             try {
-                taskCount = processCommand(input, tasks, taskCount);
+                processCommand(input, tasks);
             } catch (DinoException e) {
                 System.out.println(e.getMessage());
             }
@@ -44,50 +43,45 @@ public class DINO {
         scanner.close();
     }
 
-    private static int processCommand(String input, Task[] tasks, int taskCount)
+    private static void processCommand(String input, ArrayList<Task> tasks)
             throws DinoException {
         if (input.equals("list")) {
-            listTasks(tasks, taskCount);
-            return taskCount;
+            listTasks(tasks);
+            return;
         }
 
         if (input.equals("mark") || input.startsWith(MARK_PREFIX)) {
-            markTask(tasks, taskCount, input);
-            return taskCount;
+            markTask(tasks, input);
+            return;
         }
 
         if (input.equals("unmark") || input.startsWith(UNMARK_PREFIX)) {
-            unmarkTask(tasks, taskCount, input);
-            return taskCount;
+            unmarkTask(tasks, input);
+            return;
+        }
+
+        if (input.equals("delete") || input.startsWith(DELETE_PREFIX)) {
+            deleteTask(tasks, input);
+            return;
         }
 
         if (input.equals("todo") || input.startsWith(TODO_PREFIX)) {
-            checkTaskCapacity(taskCount);
-            Task task = createTodo(input);
-            return addTask(tasks, taskCount, task);
+            addTask(tasks, createTodo(input));
+            return;
         }
 
         if (input.equals("deadline") || input.startsWith(DEADLINE_PREFIX)) {
-            checkTaskCapacity(taskCount);
-            Task task = createDeadline(input);
-            return addTask(tasks, taskCount, task);
+            addTask(tasks, createDeadline(input));
+            return;
         }
 
         if (input.equals("event") || input.startsWith(EVENT_PREFIX)) {
-            checkTaskCapacity(taskCount);
-            Task task = createEvent(input);
-            return addTask(tasks, taskCount, task);
+            addTask(tasks, createEvent(input));
+            return;
         }
 
         throw new DinoException(
-                "OOPS!!! I don't know what that command means, please start with todo/ deadline/ event/ mark/ unmarkdeadline homework\n" +
-                        "deadline homework /by \n" +
-                        "event meeting\n" +
-                        "event meeting /from Monday\n" +
-                        "mark\n" +
-                        "mark abc\n" +
-                        "mark 999\n" +
-                        "unmark 0."
+                "OOPS!!! I don't know what that command means."
         );
     }
 
@@ -177,26 +171,39 @@ public class DINO {
         return new Event(description, from, to);
     }
 
-    private static void markTask(Task[] tasks, int taskCount, String input)
+    private static void markTask(ArrayList<Task> tasks, String input)
             throws DinoException {
-        int taskIndex = getTaskIndex(
-                input, MARK_PREFIX, taskCount, "mark");
+        int taskIndex = getTaskIndex(input, MARK_PREFIX, tasks.size(), "mark");
 
-        tasks[taskIndex].markAsDone();
+        tasks.get(taskIndex).markAsDone();
 
         System.out.println("Nice! I've marked this task as done:");
-        System.out.println(tasks[taskIndex]);
+        System.out.println(tasks.get(taskIndex));
     }
 
-    private static void unmarkTask(Task[] tasks, int taskCount, String input)
+    private static void unmarkTask(ArrayList<Task> tasks, String input)
             throws DinoException {
         int taskIndex = getTaskIndex(
-                input, UNMARK_PREFIX, taskCount, "unmark");
+                input, UNMARK_PREFIX, tasks.size(), "unmark");
 
-        tasks[taskIndex].markAsNotDone();
+        tasks.get(taskIndex).markAsNotDone();
 
         System.out.println("OK, I've marked this task as not done yet:");
-        System.out.println(tasks[taskIndex]);
+        System.out.println(tasks.get(taskIndex));
+    }
+
+    private static void deleteTask(ArrayList<Task> tasks, String input)
+            throws DinoException {
+        int taskIndex = getTaskIndex(
+                input, DELETE_PREFIX, tasks.size(), "delete");
+
+        Task removedTask = tasks.remove(taskIndex);
+
+        System.out.println("Noted. I've removed this task:");
+        System.out.println("  " + removedTask);
+        System.out.println(
+                "Now you have " + tasks.size() + " tasks in the list."
+        );
     }
 
     private static int getTaskIndex(String input, String prefix,
@@ -227,33 +234,21 @@ public class DINO {
         }
     }
 
-    private static int addTask(Task[] tasks, int taskCount, Task task) {
-        tasks[taskCount] = task;
-        taskCount++;
+    private static void addTask(ArrayList<Task> tasks, Task task) {
+        tasks.add(task);
 
         System.out.println("Got it. I've added this task:");
         System.out.println("  " + task);
         System.out.println(
-                "Now you have " + taskCount + " tasks in the list."
+                "Now you have " + tasks.size() + " tasks in the list."
         );
-
-        return taskCount;
     }
 
-    private static void checkTaskCapacity(int taskCount)
-            throws DinoException {
-        if (taskCount >= MAX_TASKS) {
-            throw new DinoException(
-                    "OOPS!!! Your task list is full."
-            );
-        }
-    }
-
-    private static void listTasks(Task[] tasks, int taskCount) {
+    private static void listTasks(ArrayList<Task> tasks) {
         System.out.println("Here are the tasks in your list:");
 
-        for (int i = 0; i < taskCount; i++) {
-            System.out.println((i + 1) + "." + tasks[i]);
+        for (int i = 0; i < tasks.size(); i++) {
+            System.out.println((i + 1) + "." + tasks.get(i));
         }
     }
 
