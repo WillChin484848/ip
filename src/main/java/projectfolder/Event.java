@@ -4,8 +4,8 @@ package projectfolder;
  * Represents a task that occurs between a start and end time.
  */
 public class Event extends Task {
-    protected String from;
-    protected String to;
+    private final String from;
+    private final String to;
 
     /**
      * Creates an event with the given description, start time, and end time.
@@ -18,6 +18,24 @@ public class Event extends Task {
         super(description);
         this.from = from;
         this.to = to;
+    }
+
+    /**
+     * Returns the start time of this event.
+     *
+     * @return start time of this event
+     */
+    public String getFrom() {
+        return from;
+    }
+
+    /**
+     * Returns the end time of this event.
+     *
+     * @return end time of this event
+     */
+    public String getTo() {
+        return to;
     }
 
     @Override

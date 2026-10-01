@@ -10,7 +10,7 @@ import java.util.Scanner;
 /**
  * Runs the DINO chatbot and manages the user's tasks.
  */
-public class DINO {
+public class lisDINO {
     private static final String TODO_PREFIX = "todo ";
     private static final String DEADLINE_PREFIX = "deadline ";
     private static final String EVENT_PREFIX = "event ";
@@ -32,13 +32,18 @@ public class DINO {
         ArrayList<Task> tasks = loadTasks();
 
         printGreeting();
+        runCommandLoop(scanner, tasks);
+        scanner.close();
+    }
 
+    private static void runCommandLoop(Scanner scanner,
+                                       ArrayList<Task> tasks) {
         while (true) {
             String input = scanner.nextLine();
 
             if (input.equals("bye")) {
                 printGoodbye();
-                break;
+                return;
             }
 
             try {
@@ -47,8 +52,6 @@ public class DINO {
                 System.out.println(e.getMessage());
             }
         }
-
-        scanner.close();
     }
 
     private static void processCommand(String input, ArrayList<Task> tasks)
@@ -59,44 +62,80 @@ public class DINO {
         }
 
         if (input.equals("mark") || input.startsWith(MARK_PREFIX)) {
-            markTask(tasks, input);
-            saveTasks(tasks);
+            handleMarkCommand(tasks, input);
             return;
         }
 
         if (input.equals("unmark") || input.startsWith(UNMARK_PREFIX)) {
-            unmarkTask(tasks, input);
-            saveTasks(tasks);
+            handleUnmarkCommand(tasks, input);
             return;
         }
 
         if (input.equals("delete") || input.startsWith(DELETE_PREFIX)) {
-            deleteTask(tasks, input);
-            saveTasks(tasks);
+            handleDeleteCommand(tasks, input);
             return;
         }
 
         if (input.equals("todo") || input.startsWith(TODO_PREFIX)) {
-            addTask(tasks, createTodo(input));
-            saveTasks(tasks);
+            handleTodoCommand(tasks, input);
             return;
         }
 
         if (input.equals("deadline") || input.startsWith(DEADLINE_PREFIX)) {
-            addTask(tasks, createDeadline(input));
-            saveTasks(tasks);
+            handleDeadlineCommand(tasks, input);
             return;
         }
 
         if (input.equals("event") || input.startsWith(EVENT_PREFIX)) {
-            addTask(tasks, createEvent(input));
-            saveTasks(tasks);
+            handleEventCommand(tasks, input);
             return;
         }
 
         throw new DinoException(
                 "OOPS!!! I don't know what that command means."
         );
+    }
+
+    private static void handleMarkCommand(ArrayList<Task> tasks, String input)
+            throws DinoException {
+        markTask(tasks, input);
+        saveTasks(tasks);
+    }
+
+    private static void handleUnmarkCommand(ArrayList<Task> tasks,
+                                            String input)
+            throws DinoException {
+        unmarkTask(tasks, input);
+        saveTasks(tasks);
+    }
+
+    private static void handleDeleteCommand(ArrayList<Task> tasks,
+                                            String input)
+            throws DinoException {
+        deleteTask(tasks, input);
+        saveTasks(tasks);
+    }
+
+    private static void handleTodoCommand(ArrayList<Task> tasks, String input)
+            throws DinoException {
+        Task task = createTodo(input);
+        addTask(tasks, task);
+        saveTasks(tasks);
+    }
+
+    private static void handleDeadlineCommand(ArrayList<Task> tasks,
+                                              String input)
+            throws DinoException {
+        Task task = createDeadline(input);
+        addTask(tasks, task);
+        saveTasks(tasks);
+    }
+
+    private static void handleEventCommand(ArrayList<Task> tasks, String input)
+            throws DinoException {
+        Task task = createEvent(input);
+        addTask(tasks, task);
+        saveTasks(tasks);
     }
 
     private static Todo createTodo(String input) throws DinoException {
@@ -190,10 +229,11 @@ public class DINO {
         int taskIndex = getTaskIndex(
                 input, MARK_PREFIX, tasks.size(), "mark");
 
-        tasks.get(taskIndex).markAsDone();
+        Task task = tasks.get(taskIndex);
+        task.markAsDone();
 
         System.out.println("Nice! I've marked this task as done:");
-        System.out.println(tasks.get(taskIndex));
+        System.out.println(task);
     }
 
     private static void unmarkTask(ArrayList<Task> tasks, String input)
@@ -201,10 +241,11 @@ public class DINO {
         int taskIndex = getTaskIndex(
                 input, UNMARK_PREFIX, tasks.size(), "unmark");
 
-        tasks.get(taskIndex).markAsNotDone();
+        Task task = tasks.get(taskIndex);
+        task.markAsNotDone();
 
         System.out.println("OK, I've marked this task as not done yet:");
-        System.out.println(tasks.get(taskIndex));
+        System.out.println(task);
     }
 
     private static void deleteTask(ArrayList<Task> tasks, String input)
@@ -234,17 +275,20 @@ public class DINO {
 
         try {
             int taskNumber = Integer.parseInt(taskNumberText);
-
-            if (taskNumber < 1 || taskNumber > taskCount) {
-                throw new DinoException(
-                        "OOPS!!! That task number does not exist."
-                );
-            }
-
+            validateTaskNumber(taskNumber, taskCount);
             return taskNumber - 1;
         } catch (NumberFormatException e) {
             throw new DinoException(
                     "OOPS!!! The task number must be a number."
+            );
+        }
+    }
+
+    private static void validateTaskNumber(int taskNumber, int taskCount)
+            throws DinoException {
+        if (taskNumber < 1 || taskNumber > taskCount) {
+            throw new DinoException(
+                    "OOPS!!! That task number does not exist."
             );
         }
     }
@@ -269,6 +313,18 @@ public class DINO {
 
     private static void saveTasks(ArrayList<Task> tasks)
             throws DinoException {
+        File dataFile = prepareDataFile();
+
+        try (FileWriter writer = new FileWriter(dataFile)) {
+            writeTasks(writer, tasks);
+        } catch (IOException e) {
+            throw new DinoException(
+                    "OOPS!!! I could not save your tasks."
+            );
+        }
+    }
+
+    private static File prepareDataFile() throws DinoException {
         File directory = new File(DATA_DIRECTORY);
 
         if (!directory.exists() && !directory.mkdirs()) {
@@ -277,43 +333,52 @@ public class DINO {
             );
         }
 
-        File dataFile = new File(directory, DATA_FILE);
+        return new File(directory, DATA_FILE);
+    }
 
-        try (FileWriter writer = new FileWriter(dataFile)) {
-            for (Task task : tasks) {
-                writer.write(convertTaskToData(task));
-                writer.write(System.lineSeparator());
-            }
-        } catch (IOException e) {
-            throw new DinoException(
-                    "OOPS!!! I could not save your tasks."
-            );
+    private static void writeTasks(FileWriter writer,
+                                   ArrayList<Task> tasks)
+            throws IOException {
+        for (Task task : tasks) {
+            writer.write(convertTaskToData(task));
+            writer.write(System.lineSeparator());
         }
     }
 
     private static String convertTaskToData(Task task) {
-        String status = task.isDone ? "1" : "0";
+        String status = task.isDone() ? "1" : "0";
 
         if (task instanceof Todo) {
-            return "T" + SEPARATOR
-                    + status + SEPARATOR
-                    + task.description;
+            return convertTodoToData(task, status);
         }
 
         if (task instanceof Deadline) {
-            Deadline deadline = (Deadline) task;
-            return "D" + SEPARATOR
-                    + status + SEPARATOR
-                    + deadline.description + SEPARATOR
-                    + deadline.by;
+            return convertDeadlineToData((Deadline) task, status);
         }
 
-        Event event = (Event) task;
+        return convertEventToData((Event) task, status);
+    }
+
+    private static String convertTodoToData(Task task, String status) {
+        return "T" + SEPARATOR
+                + status + SEPARATOR
+                + task.getDescription();
+    }
+
+    private static String convertDeadlineToData(Deadline deadline,
+                                                String status) {
+        return "D" + SEPARATOR
+                + status + SEPARATOR
+                + deadline.getDescription() + SEPARATOR
+                + deadline.getBy();
+    }
+
+    private static String convertEventToData(Event event, String status) {
         return "E" + SEPARATOR
                 + status + SEPARATOR
-                + event.description + SEPARATOR
-                + event.from + SEPARATOR
-                + event.to;
+                + event.getDescription() + SEPARATOR
+                + event.getFrom() + SEPARATOR
+                + event.getTo();
     }
 
     private static ArrayList<Task> loadTasks() {
@@ -325,20 +390,28 @@ public class DINO {
             return tasks;
         }
 
+        loadTasksFromFile(dataFile, tasks);
+        return tasks;
+    }
+
+    private static void loadTasksFromFile(File dataFile,
+                                          ArrayList<Task> tasks) {
         try (Scanner fileScanner = new Scanner(dataFile)) {
             while (fileScanner.hasNextLine()) {
-                String line = fileScanner.nextLine();
-                Task task = convertDataToTask(line);
-
-                if (task != null) {
-                    tasks.add(task);
-                }
+                addTaskFromData(fileScanner.nextLine(), tasks);
             }
         } catch (FileNotFoundException e) {
-            return tasks;
+            return;
         }
+    }
 
-        return tasks;
+    private static void addTaskFromData(String line,
+                                        ArrayList<Task> tasks) {
+        Task task = convertDataToTask(line);
+
+        if (task != null) {
+            tasks.add(task);
+        }
     }
 
     private static Task convertDataToTask(String line) {
@@ -348,35 +421,42 @@ public class DINO {
             return null;
         }
 
-        String taskType = taskData[0];
-        boolean isDone = taskData[1].equals("1");
-        Task task;
+        Task task = createTaskFromData(taskData);
 
-        switch (taskType) {
-            case "T":
-                task = new Todo(taskData[2]);
-                break;
-            case "D":
-                if (taskData.length < 4) {
-                    return null;
-                }
-                task = new Deadline(taskData[2], taskData[3]);
-                break;
-            case "E":
-                if (taskData.length < 5) {
-                    return null;
-                }
-                task = new Event(taskData[2], taskData[3], taskData[4]);
-                break;
-            default:
-                return null;
-        }
-
-        if (isDone) {
+        if (task != null && taskData[1].equals("1")) {
             task.markAsDone();
         }
 
         return task;
+    }
+
+    private static Task createTaskFromData(String[] taskData) {
+        switch (taskData[0]) {
+            case "T":
+                return new Todo(taskData[2]);
+            case "D":
+                return createDeadlineFromData(taskData);
+            case "E":
+                return createEventFromData(taskData);
+            default:
+                return null;
+        }
+    }
+
+    private static Deadline createDeadlineFromData(String[] taskData) {
+        if (taskData.length < 4) {
+            return null;
+        }
+
+        return new Deadline(taskData[2], taskData[3]);
+    }
+
+    private static Event createEventFromData(String[] taskData) {
+        if (taskData.length < 5) {
+            return null;
+        }
+
+        return new Event(taskData[2], taskData[3], taskData[4]);
     }
 
     private static void printGreeting() {
