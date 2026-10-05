@@ -40,13 +40,6 @@ public class Parser {
      *
      * @param input user command
      * @return created deadline
-     * @throws DinoException if the command is incomplete
-     */
-    /**
-     * Creates a deadline from a user command.
-     *
-     * @param input user command
-     * @return created deadline
      * @throws DinoException if the command is incomplete or the date is invalid
      */
     public Deadline parseDeadline(String input) throws DinoException {
