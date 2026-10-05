@@ -1,12 +1,12 @@
 package projectfolder;
-
+import java.time.LocalDate;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Scanner;
-
 /**
  * Handles loading tasks from and saving tasks to a data file.
  */
@@ -169,7 +169,8 @@ public class Storage {
             return null;
         }
 
-        return new Deadline(taskData[2], taskData[3]);
+        LocalDate by = LocalDate.parse(taskData[3]);
+        return new Deadline(taskData[2], by);
     }
 
     private Event createEventFromData(String[] taskData) {
