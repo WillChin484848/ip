@@ -1,5 +1,6 @@
 package projectfolder;
-
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 /**
  * Parses user commands and converts command details into tasks and indexes.
  */
@@ -40,10 +41,17 @@ public class Parser {
      * @return created deadline
      * @throws DinoException if the command is incomplete
      */
+    /**
+     * Creates a deadline from a user command.
+     *
+     * @param input user command
+     * @return created deadline
+     * @throws DinoException if the command is incomplete or the date is invalid
+     */
     public Deadline parseDeadline(String input) throws DinoException {
         if (input.equals("deadline")) {
             throw new DinoException(
-                    "OOPS!!! A deadline needs a description and /by time."
+                    "OOPS!!! A deadline needs a description and /by date."
             );
         }
 
@@ -57,7 +65,7 @@ public class Parser {
         }
 
         String description = taskDetails.substring(0, byIndex).trim();
-        String by = taskDetails.substring(
+        String byText = taskDetails.substring(
                 byIndex + " /by ".length()).trim();
 
         if (description.isEmpty()) {
@@ -66,13 +74,20 @@ public class Parser {
             );
         }
 
-        if (by.isEmpty()) {
+        if (byText.isEmpty()) {
             throw new DinoException(
-                    "OOPS!!! Please give your deadline a /by value."
+                    "OOPS!!! Please give your deadline a /by date."
             );
         }
 
-        return new Deadline(description, by);
+        try {
+            LocalDate by = LocalDate.parse(byText);
+            return new Deadline(description, by);
+        } catch (DateTimeParseException e) {
+            throw new DinoException(
+                    "OOPS!!! Please use yyyy-MM-dd for the deadline date."
+            );
+        }
     }
 
     /**
