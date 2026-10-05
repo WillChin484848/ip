@@ -1,0 +1,157 @@
+package projectfolder;
+
+/**
+ * Parses user commands and converts command details into tasks and indexes.
+ */
+public class Parser {
+    private static final String TODO_PREFIX = "todo ";
+    private static final String DEADLINE_PREFIX = "deadline ";
+    private static final String EVENT_PREFIX = "event ";
+
+    /**
+     * Creates a todo from a user command.
+     *
+     * @param input user command
+     * @return created todo
+     * @throws DinoException if the command is incomplete
+     */
+    public Todo parseTodo(String input) throws DinoException {
+        if (input.equals("todo")) {
+            throw new DinoException(
+                    "OOPS!!! Please give your todo a description."
+            );
+        }
+
+        String description = input.substring(TODO_PREFIX.length()).trim();
+
+        if (description.isEmpty()) {
+            throw new DinoException(
+                    "OOPS!!! Please give your todo a description."
+            );
+        }
+
+        return new Todo(description);
+    }
+
+    /**
+     * Creates a deadline from a user command.
+     *
+     * @param input user command
+     * @return created deadline
+     * @throws DinoException if the command is incomplete
+     */
+    public Deadline parseDeadline(String input) throws DinoException {
+        if (input.equals("deadline")) {
+            throw new DinoException(
+                    "OOPS!!! A deadline needs a description and /by time."
+            );
+        }
+
+        String taskDetails = input.substring(DEADLINE_PREFIX.length());
+        int byIndex = taskDetails.indexOf(" /by ");
+
+        if (byIndex < 0) {
+            throw new DinoException(
+                    "OOPS!!! A deadline must contain /by."
+            );
+        }
+
+        String description = taskDetails.substring(0, byIndex).trim();
+        String by = taskDetails.substring(
+                byIndex + " /by ".length()).trim();
+
+        if (description.isEmpty()) {
+            throw new DinoException(
+                    "OOPS!!! Please give your deadline a description."
+            );
+        }
+
+        if (by.isEmpty()) {
+            throw new DinoException(
+                    "OOPS!!! Please give your deadline a /by value."
+            );
+        }
+
+        return new Deadline(description, by);
+    }
+
+    /**
+     * Creates an event from a user command.
+     *
+     * @param input user command
+     * @return created event
+     * @throws DinoException if the command is incomplete
+     */
+    public Event parseEvent(String input) throws DinoException {
+        if (input.equals("event")) {
+            throw new DinoException(
+                    "OOPS!!! An event needs a description, /from, and /to."
+            );
+        }
+
+        String taskDetails = input.substring(EVENT_PREFIX.length());
+        int fromIndex = taskDetails.indexOf(" /from ");
+        int toIndex = taskDetails.indexOf(" /to ");
+
+        if (fromIndex < 0 || toIndex < 0 || toIndex <= fromIndex) {
+            throw new DinoException(
+                    "OOPS!!! An event must contain /from followed by /to."
+            );
+        }
+
+        String description = taskDetails.substring(0, fromIndex).trim();
+        String from = taskDetails.substring(
+                fromIndex + " /from ".length(), toIndex).trim();
+        String to = taskDetails.substring(
+                toIndex + " /to ".length()).trim();
+
+        if (description.isEmpty() || from.isEmpty() || to.isEmpty()) {
+            throw new DinoException(
+                    "OOPS!!! Please complete all parts of your event."
+            );
+        }
+
+        return new Event(description, from, to);
+    }
+
+    /**
+     * Returns the zero-based task index from a user command.
+     *
+     * @param input user command
+     * @param prefix command prefix
+     * @param taskCount number of tasks
+     * @param command command name
+     * @return zero-based task index
+     * @throws DinoException if the task number is invalid
+     */
+    public int parseTaskIndex(String input, String prefix,
+                              int taskCount, String command)
+            throws DinoException {
+        if (input.equals(command)) {
+            throw new DinoException(
+                    "OOPS!!! Please specify a task number."
+            );
+        }
+
+        String taskNumberText = input.substring(prefix.length()).trim();
+
+        try {
+            int taskNumber = Integer.parseInt(taskNumberText);
+            validateTaskNumber(taskNumber, taskCount);
+            return taskNumber - 1;
+        } catch (NumberFormatException e) {
+            throw new DinoException(
+                    "OOPS!!! The task number must be a number."
+            );
+        }
+    }
+
+    private void validateTaskNumber(int taskNumber, int taskCount)
+            throws DinoException {
+        if (taskNumber < 1 || taskNumber > taskCount) {
+            throw new DinoException(
+                    "OOPS!!! That task number does not exist."
+            );
+        }
+    }
+}
