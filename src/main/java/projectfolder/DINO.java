@@ -7,6 +7,7 @@ public class DINO {
     private static final String MARK_PREFIX = "mark ";
     private static final String UNMARK_PREFIX = "unmark ";
     private static final String DELETE_PREFIX = "delete ";
+    private static final String FIND_PREFIX = "find ";
 
     private static final String DATA_FILE_PATH = "data/dino.txt";
 
@@ -53,6 +54,11 @@ public class DINO {
             return;
         }
 
+        if (input.equals("find") || input.startsWith(FIND_PREFIX)) {
+            handleFindCommand(tasks, input, parser, ui);
+            return;
+        }
+
         if (input.equals("mark") || input.startsWith(MARK_PREFIX)) {
             handleMarkCommand(tasks, input, storage, parser, ui);
             return;
@@ -86,6 +92,14 @@ public class DINO {
         throw new DinoException(
                 "OOPS!!! I don't know what that command means."
         );
+    }
+
+    private static void handleFindCommand(TaskList tasks, String input,
+                                          Parser parser, Ui ui)
+            throws DinoException {
+        String keyword = parser.parseFindKeyword(input);
+        TaskList matchingTasks = tasks.find(keyword);
+        ui.showMatchingTasks(matchingTasks);
     }
 
     private static void handleMarkCommand(TaskList tasks, String input,

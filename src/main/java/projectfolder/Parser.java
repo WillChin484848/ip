@@ -8,6 +8,7 @@ public class Parser {
     private static final String TODO_PREFIX = "todo ";
     private static final String DEADLINE_PREFIX = "deadline ";
     private static final String EVENT_PREFIX = "event ";
+    private static final String FIND_PREFIX = "find ";
 
     /**
      * Creates a todo from a user command.
@@ -168,5 +169,30 @@ public class Parser {
                     "OOPS!!! That task number does not exist."
             );
         }
+    }
+
+    /**
+     * Returns the keyword from a find command.
+     *
+     * @param input user command
+     * @return keyword to search for
+     * @throws DinoException if no keyword is provided
+     */
+    public String parseFindKeyword(String input) throws DinoException {
+        if (input.equals("find")) {
+            throw new DinoException(
+                    "OOPS!!! Please give me a keyword to find."
+            );
+        }
+
+        String keyword = input.substring(FIND_PREFIX.length()).trim();
+
+        if (keyword.isEmpty()) {
+            throw new DinoException(
+                    "OOPS!!! Please give me a keyword to find."
+            );
+        }
+
+        return keyword;
     }
 }

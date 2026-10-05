@@ -122,4 +122,17 @@ public class Ui {
     public void close() {
         scanner.close();
     }
+
+    /**
+     * Displays tasks that match a search keyword.
+     *
+     * @param tasks matching tasks to display
+     */
+    public void showMatchingTasks(TaskList tasks) {
+        System.out.println("Here are the matching tasks in your list:");
+
+        for (int i = 0; i < tasks.size(); i++) {
+            System.out.println((i + 1) + "." + tasks.get(i));
+        }
+    }
 }

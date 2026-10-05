@@ -1,3 +1,0 @@
-T | 1 | read book
-D | 0 | return book | Sunday
-E | 0 | project meeting | Monday | Tuesday
