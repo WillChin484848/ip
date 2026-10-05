@@ -1,26 +1,14 @@
 package projectfolder;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Scanner;
-
 /**
- * Runs the DINO chatbot and manages the user's tasks.
+ * Runs the DINO chatbot and manages the application flow.
  */
-public class lisDINO {
-    private static final String TODO_PREFIX = "todo ";
-    private static final String DEADLINE_PREFIX = "deadline ";
-    private static final String EVENT_PREFIX = "event ";
+public class DINO {
     private static final String MARK_PREFIX = "mark ";
     private static final String UNMARK_PREFIX = "unmark ";
     private static final String DELETE_PREFIX = "delete ";
 
-    private static final String DATA_DIRECTORY = "data";
-    private static final String DATA_FILE = "dino.txt";
-    private static final String SEPARATOR = " | ";
+    private static final String DATA_FILE_PATH = "data/dino.txt";
 
     /**
      * Starts DINO and processes commands entered by the user.
@@ -28,66 +16,70 @@ public class lisDINO {
      * @param args command-line arguments
      */
     public static void main(String[] args) {
-        Scanner scanner = new Scanner(System.in);
-        ArrayList<Task> tasks = loadTasks();
+        Ui ui = new Ui();
+        Storage storage = new Storage(DATA_FILE_PATH);
+        Parser parser = new Parser();
+        TaskList tasks = new TaskList(storage.load());
 
-        printGreeting();
-        runCommandLoop(scanner, tasks);
-        scanner.close();
+        ui.showGreeting();
+        runCommandLoop(ui, storage, parser, tasks);
+        ui.close();
     }
 
-    private static void runCommandLoop(Scanner scanner,
-                                       ArrayList<Task> tasks) {
+    private static void runCommandLoop(Ui ui, Storage storage,
+                                       Parser parser, TaskList tasks) {
         while (true) {
-            String input = scanner.nextLine();
+            String input = ui.readCommand();
 
             if (input.equals("bye")) {
-                printGoodbye();
+                ui.showGoodbye();
                 return;
             }
 
             try {
-                processCommand(input, tasks);
+                processCommand(input, tasks, storage, parser, ui);
             } catch (DinoException e) {
-                System.out.println(e.getMessage());
+                ui.showError(e.getMessage());
             }
         }
     }
 
-    private static void processCommand(String input, ArrayList<Task> tasks)
+    private static void processCommand(String input, TaskList tasks,
+                                       Storage storage, Parser parser,
+                                       Ui ui)
             throws DinoException {
         if (input.equals("list")) {
-            listTasks(tasks);
+            ui.showTaskList(tasks);
             return;
         }
 
         if (input.equals("mark") || input.startsWith(MARK_PREFIX)) {
-            handleMarkCommand(tasks, input);
+            handleMarkCommand(tasks, input, storage, parser, ui);
             return;
         }
 
         if (input.equals("unmark") || input.startsWith(UNMARK_PREFIX)) {
-            handleUnmarkCommand(tasks, input);
+            handleUnmarkCommand(tasks, input, storage, parser, ui);
             return;
         }
 
         if (input.equals("delete") || input.startsWith(DELETE_PREFIX)) {
-            handleDeleteCommand(tasks, input);
+            handleDeleteCommand(tasks, input, storage, parser, ui);
             return;
         }
 
-        if (input.equals("todo") || input.startsWith(TODO_PREFIX)) {
-            handleTodoCommand(tasks, input);
+        if (input.equals("todo") || input.startsWith("todo ")) {
+            handleTodoCommand(tasks, input, storage, parser, ui);
             return;
         }
 
-        if (input.equals("deadline") || input.startsWith(DEADLINE_PREFIX)) {
-            handleDeadlineCommand(tasks, input);
+        if (input.equals("deadline") || input.startsWith("deadline ")) {
+            handleDeadlineCommand(tasks, input, storage, parser, ui);
             return;
         }
 
-        if (input.equals("event") || input.startsWith(EVENT_PREFIX)) {
-            handleEventCommand(tasks, input);
+        if (input.equals("event") || input.startsWith("event ")) {
+            handleEventCommand(tasks, input, storage, parser, ui);
             return;
         }
 
@@ -96,382 +88,76 @@ public class lisDINO {
         );
     }
 
-    private static void handleMarkCommand(ArrayList<Task> tasks, String input)
+    private static void handleMarkCommand(TaskList tasks, String input,
+                                          Storage storage, Parser parser,
+                                          Ui ui)
             throws DinoException {
-        markTask(tasks, input);
-        saveTasks(tasks);
-    }
-
-    private static void handleUnmarkCommand(ArrayList<Task> tasks,
-                                            String input)
-            throws DinoException {
-        unmarkTask(tasks, input);
-        saveTasks(tasks);
-    }
-
-    private static void handleDeleteCommand(ArrayList<Task> tasks,
-                                            String input)
-            throws DinoException {
-        deleteTask(tasks, input);
-        saveTasks(tasks);
-    }
-
-    private static void handleTodoCommand(ArrayList<Task> tasks, String input)
-            throws DinoException {
-        Task task = createTodo(input);
-        addTask(tasks, task);
-        saveTasks(tasks);
-    }
-
-    private static void handleDeadlineCommand(ArrayList<Task> tasks,
-                                              String input)
-            throws DinoException {
-        Task task = createDeadline(input);
-        addTask(tasks, task);
-        saveTasks(tasks);
-    }
-
-    private static void handleEventCommand(ArrayList<Task> tasks, String input)
-            throws DinoException {
-        Task task = createEvent(input);
-        addTask(tasks, task);
-        saveTasks(tasks);
-    }
-
-    private static Todo createTodo(String input) throws DinoException {
-        if (input.equals("todo")) {
-            throw new DinoException(
-                    "OOPS!!! Please give your todo a description."
-            );
-        }
-
-        String description = input.substring(TODO_PREFIX.length()).trim();
-
-        if (description.isEmpty()) {
-            throw new DinoException(
-                    "OOPS!!! Please give your todo a description."
-            );
-        }
-
-        return new Todo(description);
-    }
-
-    private static Deadline createDeadline(String input)
-            throws DinoException {
-        if (input.equals("deadline")) {
-            throw new DinoException(
-                    "OOPS!!! A deadline needs a description and /by time."
-            );
-        }
-
-        String taskDetails = input.substring(DEADLINE_PREFIX.length());
-        int byIndex = taskDetails.indexOf(" /by ");
-
-        if (byIndex < 0) {
-            throw new DinoException(
-                    "OOPS!!! A deadline must contain /by."
-            );
-        }
-
-        String description = taskDetails.substring(0, byIndex).trim();
-        String by = taskDetails.substring(
-                byIndex + " /by ".length()).trim();
-
-        if (description.isEmpty()) {
-            throw new DinoException(
-                    "OOPS!!! Please give your deadline a description."
-            );
-        }
-
-        if (by.isEmpty()) {
-            throw new DinoException(
-                    "OOPS!!! Please give your deadline a /by value."
-            );
-        }
-
-        return new Deadline(description, by);
-    }
-
-    private static Event createEvent(String input) throws DinoException {
-        if (input.equals("event")) {
-            throw new DinoException(
-                    "OOPS!!! An event needs a description, /from, and /to."
-            );
-        }
-
-        String taskDetails = input.substring(EVENT_PREFIX.length());
-        int fromIndex = taskDetails.indexOf(" /from ");
-        int toIndex = taskDetails.indexOf(" /to ");
-
-        if (fromIndex < 0 || toIndex < 0 || toIndex <= fromIndex) {
-            throw new DinoException(
-                    "OOPS!!! An event must contain /from followed by /to."
-            );
-        }
-
-        String description = taskDetails.substring(0, fromIndex).trim();
-        String from = taskDetails.substring(
-                fromIndex + " /from ".length(), toIndex).trim();
-        String to = taskDetails.substring(
-                toIndex + " /to ".length()).trim();
-
-        if (description.isEmpty() || from.isEmpty() || to.isEmpty()) {
-            throw new DinoException(
-                    "OOPS!!! Please complete all parts of your event."
-            );
-        }
-
-        return new Event(description, from, to);
-    }
-
-    private static void markTask(ArrayList<Task> tasks, String input)
-            throws DinoException {
-        int taskIndex = getTaskIndex(
+        int taskIndex = parser.parseTaskIndex(
                 input, MARK_PREFIX, tasks.size(), "mark");
 
         Task task = tasks.get(taskIndex);
         task.markAsDone();
+        ui.showTaskMarked(task);
 
-        System.out.println("Nice! I've marked this task as done:");
-        System.out.println(task);
+        storage.save(tasks);
     }
 
-    private static void unmarkTask(ArrayList<Task> tasks, String input)
+    private static void handleUnmarkCommand(TaskList tasks, String input,
+                                            Storage storage, Parser parser,
+                                            Ui ui)
             throws DinoException {
-        int taskIndex = getTaskIndex(
+        int taskIndex = parser.parseTaskIndex(
                 input, UNMARK_PREFIX, tasks.size(), "unmark");
 
         Task task = tasks.get(taskIndex);
         task.markAsNotDone();
+        ui.showTaskUnmarked(task);
 
-        System.out.println("OK, I've marked this task as not done yet:");
-        System.out.println(task);
+        storage.save(tasks);
     }
 
-    private static void deleteTask(ArrayList<Task> tasks, String input)
+    private static void handleDeleteCommand(TaskList tasks, String input,
+                                            Storage storage, Parser parser,
+                                            Ui ui)
             throws DinoException {
-        int taskIndex = getTaskIndex(
+        int taskIndex = parser.parseTaskIndex(
                 input, DELETE_PREFIX, tasks.size(), "delete");
 
-        Task removedTask = tasks.remove(taskIndex);
+        Task removedTask = tasks.delete(taskIndex);
+        ui.showTaskDeleted(removedTask, tasks.size());
 
-        System.out.println("Noted. I've removed this task:");
-        System.out.println("  " + removedTask);
-        System.out.println(
-                "Now you have " + tasks.size() + " tasks in the list."
-        );
+        storage.save(tasks);
     }
 
-    private static int getTaskIndex(String input, String prefix,
-                                    int taskCount, String command)
+    private static void handleTodoCommand(TaskList tasks, String input,
+                                          Storage storage, Parser parser,
+                                          Ui ui)
             throws DinoException {
-        if (input.equals(command)) {
-            throw new DinoException(
-                    "OOPS!!! Please specify a task number."
-            );
-        }
-
-        String taskNumberText = input.substring(prefix.length()).trim();
-
-        try {
-            int taskNumber = Integer.parseInt(taskNumberText);
-            validateTaskNumber(taskNumber, taskCount);
-            return taskNumber - 1;
-        } catch (NumberFormatException e) {
-            throw new DinoException(
-                    "OOPS!!! The task number must be a number."
-            );
-        }
+        Task task = parser.parseTodo(input);
+        addTask(tasks, task, ui);
+        storage.save(tasks);
     }
 
-    private static void validateTaskNumber(int taskNumber, int taskCount)
+    private static void handleDeadlineCommand(TaskList tasks, String input,
+                                              Storage storage, Parser parser,
+                                              Ui ui)
             throws DinoException {
-        if (taskNumber < 1 || taskNumber > taskCount) {
-            throw new DinoException(
-                    "OOPS!!! That task number does not exist."
-            );
-        }
+        Task task = parser.parseDeadline(input);
+        addTask(tasks, task, ui);
+        storage.save(tasks);
     }
 
-    private static void addTask(ArrayList<Task> tasks, Task task) {
+    private static void handleEventCommand(TaskList tasks, String input,
+                                           Storage storage, Parser parser,
+                                           Ui ui)
+            throws DinoException {
+        Task task = parser.parseEvent(input);
+        addTask(tasks, task, ui);
+        storage.save(tasks);
+    }
+
+    private static void addTask(TaskList tasks, Task task, Ui ui) {
         tasks.add(task);
-
-        System.out.println("Got it. I've added this task:");
-        System.out.println("  " + task);
-        System.out.println(
-                "Now you have " + tasks.size() + " tasks in the list."
-        );
-    }
-
-    private static void listTasks(ArrayList<Task> tasks) {
-        System.out.println("Here are the tasks in your list:");
-
-        for (int i = 0; i < tasks.size(); i++) {
-            System.out.println((i + 1) + "." + tasks.get(i));
-        }
-    }
-
-    private static void saveTasks(ArrayList<Task> tasks)
-            throws DinoException {
-        File dataFile = prepareDataFile();
-
-        try (FileWriter writer = new FileWriter(dataFile)) {
-            writeTasks(writer, tasks);
-        } catch (IOException e) {
-            throw new DinoException(
-                    "OOPS!!! I could not save your tasks."
-            );
-        }
-    }
-
-    private static File prepareDataFile() throws DinoException {
-        File directory = new File(DATA_DIRECTORY);
-
-        if (!directory.exists() && !directory.mkdirs()) {
-            throw new DinoException(
-                    "OOPS!!! I could not create the data folder."
-            );
-        }
-
-        return new File(directory, DATA_FILE);
-    }
-
-    private static void writeTasks(FileWriter writer,
-                                   ArrayList<Task> tasks)
-            throws IOException {
-        for (Task task : tasks) {
-            writer.write(convertTaskToData(task));
-            writer.write(System.lineSeparator());
-        }
-    }
-
-    private static String convertTaskToData(Task task) {
-        String status = task.isDone() ? "1" : "0";
-
-        if (task instanceof Todo) {
-            return convertTodoToData(task, status);
-        }
-
-        if (task instanceof Deadline) {
-            return convertDeadlineToData((Deadline) task, status);
-        }
-
-        return convertEventToData((Event) task, status);
-    }
-
-    private static String convertTodoToData(Task task, String status) {
-        return "T" + SEPARATOR
-                + status + SEPARATOR
-                + task.getDescription();
-    }
-
-    private static String convertDeadlineToData(Deadline deadline,
-                                                String status) {
-        return "D" + SEPARATOR
-                + status + SEPARATOR
-                + deadline.getDescription() + SEPARATOR
-                + deadline.getBy();
-    }
-
-    private static String convertEventToData(Event event, String status) {
-        return "E" + SEPARATOR
-                + status + SEPARATOR
-                + event.getDescription() + SEPARATOR
-                + event.getFrom() + SEPARATOR
-                + event.getTo();
-    }
-
-    private static ArrayList<Task> loadTasks() {
-        ArrayList<Task> tasks = new ArrayList<>();
-        File dataFile = new File(
-                new File(DATA_DIRECTORY), DATA_FILE);
-
-        if (!dataFile.exists()) {
-            return tasks;
-        }
-
-        loadTasksFromFile(dataFile, tasks);
-        return tasks;
-    }
-
-    private static void loadTasksFromFile(File dataFile,
-                                          ArrayList<Task> tasks) {
-        try (Scanner fileScanner = new Scanner(dataFile)) {
-            while (fileScanner.hasNextLine()) {
-                addTaskFromData(fileScanner.nextLine(), tasks);
-            }
-        } catch (FileNotFoundException e) {
-            return;
-        }
-    }
-
-    private static void addTaskFromData(String line,
-                                        ArrayList<Task> tasks) {
-        Task task = convertDataToTask(line);
-
-        if (task != null) {
-            tasks.add(task);
-        }
-    }
-
-    private static Task convertDataToTask(String line) {
-        String[] taskData = line.split("\\s\\|\\s");
-
-        if (taskData.length < 3) {
-            return null;
-        }
-
-        Task task = createTaskFromData(taskData);
-
-        if (task != null && taskData[1].equals("1")) {
-            task.markAsDone();
-        }
-
-        return task;
-    }
-
-    private static Task createTaskFromData(String[] taskData) {
-        switch (taskData[0]) {
-            case "T":
-                return new Todo(taskData[2]);
-            case "D":
-                return createDeadlineFromData(taskData);
-            case "E":
-                return createEventFromData(taskData);
-            default:
-                return null;
-        }
-    }
-
-    private static Deadline createDeadlineFromData(String[] taskData) {
-        if (taskData.length < 4) {
-            return null;
-        }
-
-        return new Deadline(taskData[2], taskData[3]);
-    }
-
-    private static Event createEventFromData(String[] taskData) {
-        if (taskData.length < 5) {
-            return null;
-        }
-
-        return new Event(taskData[2], taskData[3], taskData[4]);
-    }
-
-    private static void printGreeting() {
-        System.out.println(" ____    ___   _   _    ___  ");
-        System.out.println("|  _ \\  |_ _| | \\ | |  / _ \\ ");
-        System.out.println("| | | |  | |  |  \\| | | | | |");
-        System.out.println("| |_| |  | |  | |\\  | | |_| |");
-        System.out.println("|____/  |___| |_| \\_|  \\___/ ");
-        System.out.println();
-        System.out.println("Hello! I'm DINO");
-        System.out.println("What can I do for you?");
-        System.out.println();
-    }
-
-    private static void printGoodbye() {
-        System.out.println("Bye. Hope to see you again soon!");
+        ui.showTaskAdded(task, tasks.size());
     }
 }
